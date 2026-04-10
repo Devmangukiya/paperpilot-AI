@@ -20,10 +20,10 @@ Built with Python, Groq LLM, arXiv, and sentence-transformers — 100% free and 
 | 🖥️ **CLI Interface** | Full-featured command-line tool with `--keywords`, `--schedule`, `--json` flags |
 
 ---
+ 
+## 🏗️ Architecture 
 
-## 🏗️ Architecture
-
-```
+```  
 project/
 ├── app/
 │   ├── main.py               ← CLI entry point

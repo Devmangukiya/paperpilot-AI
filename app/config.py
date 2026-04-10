@@ -13,17 +13,11 @@ load_dotenv()
 
 
 class Config:
-    # ------------------------------------------------------------------ #
-    #  Groq API                                                            #
-    # ------------------------------------------------------------------ #
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
     # Model requested in the brief (Groq-hosted)
     GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama3-70b-8192")
 
-    # ------------------------------------------------------------------ #
-    #  Paper retrieval                                                     #
-    # ------------------------------------------------------------------ #
     MAX_RESULTS: int = int(os.getenv("MAX_RESULTS", "30"))
     # Days back to look when filtering by date
     DATE_LOOKBACK_DAYS: int = int(os.getenv("DATE_LOOKBACK_DAYS", "365"))
@@ -40,9 +34,6 @@ class Config:
         "EMBEDDING_MODEL", "all-MiniLM-L6-v2"
     )
 
-    # ------------------------------------------------------------------ #
-    #  Paths                                                               #
-    # ------------------------------------------------------------------ #
     BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     DATA_DIR: str = os.path.join(BASE_DIR, "data")
     CACHE_FILE: str = os.path.join(DATA_DIR, "cache", "seen_papers.json")

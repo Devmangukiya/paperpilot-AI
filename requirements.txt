@@ -1,26 +1,19 @@
-# ── Core ──────────────────────────────────────────────────────────────
 requests>=2.31.0
 python-dotenv>=1.0.0
 
-# ── Paper retrieval ───────────────────────────────────────────────────
 arxiv>=2.1.0
 
-# ── Embeddings (local, no API key needed) ────────────────────────────
 sentence-transformers>=2.7.0
-torch>=2.2.0              # required by sentence-transformers
+torch>=2.2.0            
 
-# ── Scheduling ────────────────────────────────────────────────────────
 schedule>=1.2.0
 
-# ── FastAPI server + static file serving ─────────────────────────────
 fastapi>=0.111.0
 uvicorn[standard]>=0.29.0
 pydantic>=2.0.0
-python-multipart>=0.0.9   # needed for StaticFiles
+python-multipart>=0.0.9   
 
-# ── Testing ───────────────────────────────────────────────────────────
 pytest>=8.0.0
 pytest-mock>=3.14.0
 
-# ── Utilities ────────────────────────────────────────────────────────
 numpy>=1.26.0

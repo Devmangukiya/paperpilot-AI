@@ -108,6 +108,13 @@ def health() -> HealthResponse:
         version="1.0.0",
     )
 
+@app.get("/debug-env", tags=["Utility"])
+def debug_env():
+    import os
+    has_key = "GROQ_API_KEY" in os.environ
+    val_len = len(os.environ.get("GROQ_API_KEY", ""))
+    return {"has_key_in_os": has_key, "key_length": val_len, "config_len": len(config.GROQ_API_KEY)}
+
 
 @app.post("/run", tags=["Pipeline"])
 def run_pipeline(body: RunRequest = RunRequest()) -> JSONResponse:

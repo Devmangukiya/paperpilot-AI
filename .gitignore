@@ -1,0 +1,10 @@
+# Environments
+.env
+.venv
+__pycache__/
+*.pyc
+
+# Data & Configs
+data/output/
+data/cache/
+data/logs/

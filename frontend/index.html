@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Research Paper Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /* ── Reset & Root ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #0a0b0f;
+      --surface:    #111318;
+      --card:       #161a22;
+      --border:     #1e2330;
+      --accent:     #4f8ef7;
+      --accent2:    #7c5cfc;
+      --text:       #e8eaf0;
+      --muted:      #6b7280;
+      --success:    #22d3a0;
+      --warn:       #f5a623;
+      --danger:     #f87171;
+      --tag-bg:     #1a1f2e;
+      --tag-text:   #7b9cff;
+
+      --font-display: 'DM Serif Display', serif;
+      --font-body:    'Outfit', sans-serif;
+      --font-mono:    'DM Mono', monospace;
+
+      --radius-sm:  8px;
+      --radius-md:  12px;
+      --radius-lg:  16px;
+      --radius-xl:  20px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Layout ──────────────────────────────────────────────────── */
+    .shell {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 3.5rem 1.5rem 6rem;
+    }
+
+    /* ── Hero ─────────────────────────────────────────────────────── */
+    .hero { text-align: center; margin-bottom: 3rem; }
+
+    .hero-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2.2rem, 5vw, 3.4rem);
+      font-weight: 400;
+      line-height: 1.15;
+      margin-bottom: .75rem;
+    }
+
+    .hero h1 em { font-style: italic; color: var(--accent2); }
+
+    .hero p {
+      font-size: 15px;
+      color: var(--muted);
+      max-width: 460px;
+      margin: 0 auto;
+    }
+
+    /* ── Search Box ───────────────────────────────────────────────── */
+    .search-wrap { position: relative; margin-bottom: 1.25rem; }
+
+    .search-input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.1rem 5.5rem 1.1rem 1.5rem;
+      font-family: var(--font-body);
+      font-size: 15px;
+      color: var(--text);
+      outline: none;
+      transition: border .2s, box-shadow .2s;
+    }
+
+    .search-input::placeholder { color: var(--muted); }
+
+    .search-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,142,247,.12);
+    }
+
+    .search-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity .2s, transform .15s;
+    }
+
+    .search-btn:hover  { opacity: .88; transform: translateY(-50%) scale(1.05); }
+    .search-btn:active { transform: translateY(-50%) scale(.97); }
+    .search-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    .search-btn svg {
+      width: 18px; height: 18px;
+      stroke: #fff; fill: none;
+      stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    /* ── Preset Chips ─────────────────────────────────────────────── */
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 2.5rem;
+    }
+
+    .chip {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--tag-text);
+      background: var(--tag-bg);
+      border: 1px solid rgba(123,156,255,.18);
+      border-radius: 99px;
+      padding: 5px 14px;
+      cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s;
+      user-select: none;
+    }
+
+    .chip:hover {
+      background: #202740;
+      border-color: rgba(123,156,255,.45);
+      color: #a8c3ff;
+    }
+
+    /* ── API Config Banner ────────────────────────────────────────── */
+    .config-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      background: rgba(245,166,35,.07);
+      border: 1px solid rgba(245,166,35,.25);
+      border-radius: var(--radius-md);
+      padding: .75rem 1.1rem;
+      margin-bottom: 1.75rem;
+      font-size: 13px;
+      color: #f5c842;
+    }
+
+    .config-banner a {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .config-banner a:hover { text-decoration: underline; }
+
+    /* ── Status Bar ───────────────────────────────────────────────── */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+      min-height: 24px;
+    }
+
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+      transition: background .3s;
+    }
+
+    .status-dot.running { background: var(--accent); animation: blink 1.4s infinite; }
+    .status-dot.done    { background: var(--success); }
+    .status-dot.error   { background: var(--danger); }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── Pipeline Steps ───────────────────────────────────────────── */
+    .steps { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1.75rem; }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: .65rem 1rem;
+      font-size: 13px;
+      color: var(--muted);
+      opacity: 0;
+      transform: translateY(5px);
+      transition: opacity .3s, transform .3s, border-color .3s, color .3s;
+    }
+
+    .step.visible { opacity: 1; transform: translateY(0); }
+
+    .step.active {
+      border-color: rgba(79,142,247,.35);
+      color: var(--text);
+    }
+
+    .step.done {
+      border-color: rgba(34,211,160,.25);
+      color: var(--success);
+    }
+
+    .step-icon {
+      width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .step-icon svg {
+      width: 14px; height: 14px;
+      stroke: currentColor; fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(79,142,247,.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error Box ────────────────────────────────────────────────── */
+    .error-box {
+      background: rgba(248,113,113,.07);
+      border: 1px solid rgba(248,113,113,.25);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.25rem;
+      color: var(--danger);
+      font-size: 14px;
+      margin-bottom: 1.5rem;
+    }
+
+    .error-box strong { display: block; margin-bottom: .25rem; font-weight: 500; }
+
+    /* ── Paper Card ───────────────────────────────────────────────── */
+    .paper-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 1.85rem;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity .4s ease, transform .4s ease;
+    }
+
+    .paper-card.visible { opacity: 1; transform: translateY(0); }
+
+    /* Card Header */
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .card-meta { flex: 1; min-width: 0; }
+
+    .card-date {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: .5rem;
+    }
+
+    .card-title {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      line-height: 1.3;
+      font-weight: 400;
+    }
+
+    /* Score Badge */
+    .score-badge {
+      flex-shrink: 0;
+      background: linear-gradient(135deg, rgba(79,142,247,.12), rgba(124,92,252,.12));
+      border: 1px solid rgba(79,142,247,.25);
+      border-radius: var(--radius-md);
+      padding: .55rem 1rem;
+      text-align: center;
+    }
+
+    .score-num {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 1.45rem;
+      font-weight: 500;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .score-label {
+      display: block;
+      font-size: 10px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* Authors */
+    .card-authors {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 1.4rem;
+      line-height: 1.5;
+    }
+
+    .card-authors .label { color: rgba(232,234,240,.4); }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: .05rem 0 1.25rem;
+    }
+
+    /* Section Label */
+    .sec-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: .65rem;
+    }
+
+    /* Summary */
+    .card-summary {
+      font-size: 14.5px;
+      line-height: 1.8;
+      color: rgba(232,234,240,.8);
+      margin-bottom: 1.5rem;
+    }
+
+    /* Relevance Box */
+    .relevance-box {
+      background: rgba(79,142,247,.06);
+      border: 1px solid rgba(79,142,247,.15);
+      border-radius: var(--radius-md);
+      padding: .95rem 1.15rem;
+      margin-bottom: 1.5rem;
+      font-size: 13.5px;
+      color: rgba(232,234,240,.75);
+      line-height: 1.7;
+    }
+
+    /* Key Insights */
+    .insights { display: flex; flex-direction: column; gap: 8px; margin-bottom: 1.5rem; }
+
+    .insight {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      background: var(--surface);
+      border-radius: var(--radius-sm);
+      padding: .75rem .95rem;
+    }
+
+    .insight-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent2);
+      flex-shrink: 0;
+      margin-top: 7px;
+    }
+
+    .insight p { font-size: 13.5px; color: rgba(232,234,240,.7); line-height: 1.65; }
+
+    /* Tags */
+    .tags { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 1.5rem; }
+
+    .tag {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--tag-text);
+      background: var(--tag-bg);
+      border: 1px solid rgba(123,156,255,.15);
+      border-radius: 99px;
+      padding: 4px 12px;
+    }
+
+    /* Card Footer */
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .arxiv-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-family: var(--font-mono);
+      color: var(--accent);
+      text-decoration: none;
+      background: rgba(79,142,247,.08);
+      border: 1px solid rgba(79,142,247,.22);
+      border-radius: var(--radius-sm);
+      padding: .5rem 1rem;
+      transition: background .15s;
+    }
+
+    .arxiv-link:hover { background: rgba(79,142,247,.16); }
+
+    .arxiv-link svg {
+      width: 13px; height: 13px;
+      stroke: currentColor; fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    .copy-btn {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      cursor: pointer;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: .5rem 1rem;
+      transition: color .15s, border-color .15s;
+    }
+
+    .copy-btn:hover { color: var(--text); border-color: rgba(255,255,255,.2); }
+
+    /* ── History ──────────────────────────────────────────────────── */
+    .history-section { margin-top: 3rem; }
+
+    .history-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    .history-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: .75rem 1.1rem;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+
+    .history-item:hover { border-color: rgba(79,142,247,.35); }
+
+    .hi-title {
+      font-size: 13px;
+      color: rgba(232,234,240,.65);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .hi-kw {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .hi-score {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    /* ── Utilities ────────────────────────────────────────────────── */
+    .hidden { display: none !important; }
+
+    /* ── Responsive ───────────────────────────────────────────────── */
+    @media (max-width: 560px) {
+      .card-header { flex-direction: column; }
+      .score-badge { align-self: flex-start; }
+      .card-footer { flex-direction: column; align-items: stretch; }
+      .arxiv-link, .copy-btn { text-align: center; justify-content: center; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="shell">
+
+  <!-- ── Hero ─────────────────────────────────────────────── -->
+  <header class="hero">
+    <p class="hero-eyebrow">Research Intelligence</p>
+    <h1>Find your<br><em>paper of the day</em></h1>
+    <p>Enter your research keywords. The agent fetches, ranks, and summarises the most relevant paper from arXiv.</p>
+  </header>
+
+
+
+  <!-- ── Search ────────────────────────────────────────────── -->
+  <div class="search-wrap">
+    <input
+      id="kwInput"
+      class="search-input"
+      type="text"
+      placeholder="finance, federated learning, explainable AI …"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <button id="searchBtn" class="search-btn" title="Search (Enter)">
+      <!-- magnifier icon -->
+      <svg viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- ── Preset Chips ───────────────────────────────────────── -->
+  <div class="chips" id="presets">
+    <span class="chip" data-kw="finance, AI, deep learning, stock market">Finance + AI</span>
+    <span class="chip" data-kw="federated learning, privacy, healthcare">FL + Healthcare</span>
+    <span class="chip" data-kw="explainable AI, XAI, interpretability, SHAP">XAI</span>
+    <span class="chip" data-kw="large language models, LLM, reasoning, transformer">LLMs</span>
+    <span class="chip" data-kw="reinforcement learning, robotics, policy gradient">RL + Robotics</span>
+    <span class="chip" data-kw="computer vision, image segmentation, object detection">CV</span>
+  </div>
+
+  <!-- ── Status Bar ─────────────────────────────────────────── -->
+  <div class="status-bar hidden" id="statusBar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Idle</span>
+  </div>
+
+  <!-- ── Pipeline Steps ────────────────────────────────────── -->
+  <div class="steps hidden" id="stepsBox">
+    <div class="step" id="step-0">
+      <div class="step-icon">
+        <!-- search icon -->
+        <svg viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </div>
+      <span>Querying arXiv with keyword combinations</span>
+    </div>
+    <div class="step" id="step-1">
+      <div class="step-icon">
+        <!-- filter icon -->
+        <svg viewBox="0 0 24 24">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+      </div>
+      <span>Filtering by date and abstract relevance</span>
+    </div>
+    <div class="step" id="step-2">
+      <div class="step-icon">
+        <!-- star icon -->
+        <svg viewBox="0 0 24 24">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      </div>
+      <span>Ranking with embedding similarity + LLM scoring</span>
+    </div>
+    <div class="step" id="step-3">
+      <div class="step-icon">
+        <!-- doc icon -->
+        <svg viewBox="0 0 24 24">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+      </div>
+      <span>Summarising and extracting key insights</span>
+    </div>
+  </div>
+
+  <!-- ── Error Box ──────────────────────────────────────────── -->
+  <div class="error-box hidden" id="errorBox">
+    <strong id="errorTitle">Something went wrong</strong>
+    <span id="errorMsg"></span>
+  </div>
+
+  <!-- ── Result Card ────────────────────────────────────────── -->
+  <div id="resultArea"></div>
+
+  <!-- ── Search History ────────────────────────────────────── -->
+  <div class="history-section hidden" id="historySection">
+    <div class="history-title">Previous searches</div>
+    <div class="history-list" id="historyList"></div>
+  </div>
+
+</div><!-- /.shell -->
+
+
+<script>
+  /* ================================================================
+   *  CONFIGURATION — change API_BASE_URL to match your FastAPI server
+   * ================================================================ */
+  const API_BASE_URL = "http://localhost:8000";
+
+  /* ================================================================
+   *  Step definitions
+   * ================================================================ */
+  const STEP_LABELS = [
+    "Querying arXiv with keyword combinations",
+    "Filtering by date and abstract relevance",
+    "Ranking with embedding similarity + LLM scoring",
+    "Summarising and extracting key insights",
+  ];
+
+  /* ================================================================
+   *  State
+   * ================================================================ */
+  let running  = false;
+  let history  = [];   // [{result, keywords}, …]
+
+  /* ================================================================
+   *  DOM refs
+   * ================================================================ */
+  const kwInput      = document.getElementById("kwInput");
+  const searchBtn    = document.getElementById("searchBtn");
+  const statusBar    = document.getElementById("statusBar");
+  const statusDot    = document.getElementById("statusDot");
+  const statusText   = document.getElementById("statusText");
+  const stepsBox     = document.getElementById("stepsBox");
+  const errorBox     = document.getElementById("errorBox");
+  const errorTitle   = document.getElementById("errorTitle");
+  const errorMsg     = document.getElementById("errorMsg");
+  const resultArea   = document.getElementById("resultArea");
+  const historySection = document.getElementById("historySection");
+  const historyList  = document.getElementById("historyList");
+
+
+  /* ================================================================
+   *  Utilities
+   * ================================================================ */
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+  const show  = el => el.classList.remove("hidden");
+  const hide  = el => el.classList.add("hidden");
+
+  /* ================================================================
+   *  Step helpers
+   * ================================================================ */
+  function resetSteps() {
+    for (let i = 0; i < 4; i++) {
+      const el = document.getElementById(`step-${i}`);
+      el.classList.remove("visible", "active", "done");
+      const icon = el.querySelector(".step-icon");
+      icon.innerHTML = stepSVGs[i];
+    }
+  }
+
+  // Keep original SVG icons so we can restore them after spinner
+  const stepSVGs = [
+    `<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+    `<svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
+    `<svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+    `<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
+  ];
+
+  const checkSVG = `<svg viewBox="0 0 24 24" style="stroke:var(--success);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;width:14px;height:14px"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+  function activateStep(i) {
+    const el = document.getElementById(`step-${i}`);
+    el.classList.add("visible", "active");
+    el.classList.remove("done");
+    el.querySelector(".step-icon").innerHTML = `<div class="spinner"></div>`;
+  }
+
+  function completeStep(i) {
+    const el = document.getElementById(`step-${i}`);
+    el.classList.remove("active");
+    el.classList.add("done");
+    el.querySelector(".step-icon").innerHTML = checkSVG;
+  }
+
+  /* ================================================================
+   *  Status helpers
+   * ================================================================ */
+  function setStatus(state, text) {
+    show(statusBar);
+    statusDot.className = `status-dot ${state}`;
+    statusText.textContent = text;
+  }
+
+  /* ================================================================
+   *  Error helper
+   * ================================================================ */
+  function showError(title, msg) {
+    show(errorBox);
+    errorTitle.textContent = title;
+    errorMsg.textContent   = msg;
+  }
+
+  function clearError() { hide(errorBox); }
+
+  /* ================================================================
+   *  Lock / unlock UI
+   * ================================================================ */
+  function lockUI() {
+    searchBtn.disabled = true;
+    kwInput.disabled   = true;
+  }
+
+  function unlockUI() {
+    searchBtn.disabled = false;
+    kwInput.disabled   = false;
+  }
+
+  /* ================================================================
+   *  Main search function — calls FastAPI /run
+   * ================================================================ */
+  async function runSearch(rawKw) {
+    if (running) return;
+
+    const keywords = rawKw
+      .split(",")
+      .map(k => k.trim())
+      .filter(Boolean);
+
+    if (!keywords.length) return;
+
+    running = true;
+    lockUI();
+    clearError();
+    resultArea.innerHTML = "";
+
+    // --- Show pipeline UI ---
+    show(stepsBox);
+    resetSteps();
+    setStatus("running", "Starting pipeline…");
+
+    // Animate step 0 immediately, others staggered
+    // (visual feedback before the real request arrives)
+    activateStep(0);
+    setStatus("running", "Querying arXiv…");
+
+    try {
+      // === Real API call ===
+      // We run the visual step animations concurrently with the API call.
+      // The API call usually takes 15-30 s; we animate steps 1-3 during
+      // the wait so the UI feels alive.
+
+      const animPromise = runAnimSequence();
+      const apiPromise  = callAPI(keywords);
+
+      // Wait for both (animation finishes faster; we'll cap it at API time)
+      const [result] = await Promise.all([apiPromise, animPromise]);
+
+      // Ensure all steps show done
+      for (let i = 0; i < 4; i++) completeStep(i);
+      setStatus("done", "Complete");
+
+      await delay(200);
+      renderCard(result, keywords.join(", "));
+
+      // Save to history
+      history.unshift({ result, keywords: keywords.join(", ") });
+      if (history.length > 8) history.pop();
+      renderHistory();
+
+    } catch (err) {
+      for (let i = 0; i < 4; i++) {
+        const el = document.getElementById(`step-${i}`);
+        if (!el.classList.contains("done")) el.classList.add("visible");
+      }
+      setStatus("error", "Failed");
+      showError("Pipeline error", err.message || "Could not connect to the backend.");
+    }
+
+    running = false;
+    unlockUI();
+  }
+
+  /* ================================================================
+   *  Visual step animation sequence (runs ~12 s, independent of API)
+   * ================================================================ */
+  async function runAnimSequence() {
+    // Step 0 already activated
+    await delay(800);
+    completeStep(0); activateStep(1); setStatus("running", "Filtering papers…");
+    await delay(1000);
+    completeStep(1); activateStep(2); setStatus("running", "Ranking with embeddings…");
+    await delay(1200);
+    completeStep(2); activateStep(3); setStatus("running", "Generating summary…");
+    // Step 3 stays spinning until API responds — that's intentional
+  }
+
+  /* ================================================================
+   *  API call to FastAPI /run
+   * ================================================================ */
+  async function callAPI(keywords) {
+    const url = `${API_BASE_URL}/run`;
+
+    const response = await fetch(url, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ keywords }),
+    });
+
+    if (!response.ok) {
+      let detail = `HTTP ${response.status}`;
+      try {
+        const j = await response.json();
+        detail = j.detail || detail;
+      } catch (_) { /* ignore */ }
+      throw new Error(detail);
+    }
+
+    return await response.json();
+  }
+
+  /* ================================================================
+   *  Render result card
+   *  Accepts the JSON shape returned by FastAPI /run
+   * ================================================================ */
+  function renderCard(data, kwDisplay) {
+    /*
+      Expected fields (from AgentResult.to_dict()):
+        title, authors, published, summary, why_relevant,
+        key_insights (array), link, score
+    */
+    const insights = Array.isArray(data.key_insights)
+      ? data.key_insights
+      : [];
+
+    const tags = extractTags(data);
+
+    const score = typeof data.score === "number"
+      ? data.score.toFixed(1)
+      : data.score;
+
+    resultArea.innerHTML = `
+      <div class="paper-card" id="paperCard">
+
+        <div class="card-header">
+          <div class="card-meta">
+            <div class="card-date">${data.published || ""}</div>
+            <div class="card-title">${escHtml(data.title || "")}</div>
+          </div>
+          <div class="score-badge">
+            <span class="score-num">${score}</span>
+            <span class="score-label">score / 10</span>
+          </div>
+        </div>
+
+        <div class="card-authors">
+          <span class="label">Authors: </span>${escHtml(data.authors || "")}
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="sec-label">Summary</div>
+        <div class="card-summary">${escHtml(data.summary || "")}</div>
+
+        <div class="sec-label">Why relevant</div>
+        <div class="relevance-box">${escHtml(data.why_relevant || "")}</div>
+
+        ${insights.length ? `
+          <div class="sec-label">Key insights</div>
+          <div class="insights">
+            ${insights.map(ins => `
+              <div class="insight">
+                <div class="insight-dot"></div>
+                <p>${escHtml(ins)}</p>
+              </div>
+            `).join("")}
+          </div>
+        ` : ""}
+
+        ${tags.length ? `
+          <div class="tags">
+            ${tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join("")}
+          </div>
+        ` : ""}
+
+        <div class="card-footer">
+          <a class="arxiv-link" href="${escAttr(data.link || "#")}" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+            View on arXiv
+          </a>
+          <button class="copy-btn" id="copyBtn">Copy JSON</button>
+        </div>
+
+      </div>
+    `;
+
+    // Animate in
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const card = document.getElementById("paperCard");
+        if (card) card.classList.add("visible");
+      });
+    });
+
+    // Copy JSON button
+    document.getElementById("copyBtn").addEventListener("click", () => {
+      const json = JSON.stringify(data, null, 2);
+      navigator.clipboard.writeText(json).catch(() => {
+        // Fallback for http:// contexts
+        const ta = document.createElement("textarea");
+        ta.value = json;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      });
+      const btn = document.getElementById("copyBtn");
+      if (btn) {
+        btn.textContent = "Copied!";
+        setTimeout(() => { if (btn) btn.textContent = "Copy JSON"; }, 1800);
+      }
+    });
+  }
+
+  /* ================================================================
+   *  History panel
+   * ================================================================ */
+  function renderHistory() {
+    if (history.length <= 1) { hide(historySection); return; }
+    show(historySection);
+
+    historyList.innerHTML = history.slice(1).map((entry, i) => `
+      <div class="history-item" data-idx="${i + 1}">
+        <span class="hi-title">${escHtml(entry.result.title || "")}</span>
+        <span class="hi-kw">${escHtml(entry.keywords)}</span>
+        <span class="hi-score">${
+          typeof entry.result.score === "number"
+            ? entry.result.score.toFixed(1)
+            : entry.result.score
+        }</span>
+      </div>
+    `).join("");
+
+    historyList.querySelectorAll(".history-item").forEach(el => {
+      el.addEventListener("click", () => {
+        const idx  = parseInt(el.dataset.idx, 10);
+        const entry = history[idx];
+        if (!entry) return;
+
+        // Show it without re-running pipeline
+        hide(stepsBox);
+        hide(statusBar);
+        clearError();
+        renderCard(entry.result, entry.keywords);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    });
+  }
+
+  /* ================================================================
+   *  Extract display tags from result
+   *  (backend doesn't send tags, so we derive from keywords + categories)
+   * ================================================================ */
+  function extractTags(data) {
+    // If the backend returns a `tags` or `categories` field, use it
+    if (Array.isArray(data.tags) && data.tags.length)      return data.tags;
+    if (Array.isArray(data.categories) && data.categories.length) return data.categories;
+    return [];
+  }
+
+  /* ================================================================
+   *  Security helpers — prevent XSS from API data
+   * ================================================================ */
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function escAttr(str) { return escHtml(str); }
+
+
+
+  /* ================================================================
+   *  Events
+   * ================================================================ */
+  searchBtn.addEventListener("click", () => {
+    const v = kwInput.value.trim();
+    if (v) runSearch(v);
+  });
+
+  kwInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      const v = kwInput.value.trim();
+      if (v) runSearch(v);
+    }
+  });
+
+  document.getElementById("presets").querySelectorAll(".chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      kwInput.value = chip.dataset.kw;
+      runSearch(chip.dataset.kw);
+    });
+  });
+
+</script>
+</body>
+</html>

@@ -26,7 +26,7 @@ from app.config import config
 from app.models.paper import AgentResult
 from app.services.filter import PaperFilter
 from app.services.groq_client import GroqClient
-from app.services.retrieval import ArxivRetriever
+from app.services.retrieval import OpenAlexRetriever
 from app.utils.cache import PaperCache
 from app.utils.logger import get_logger
 
@@ -70,7 +70,7 @@ class DailyResearchPipeline:
         logger.info("=" * 60)
 
         # ── Step 1: Retrieve ──────────────────────────────────────────
-        retriever = ArxivRetriever()
+        retriever = OpenAlexRetriever()
         papers = retriever.fetch(self.keywords)
 
         if not papers:
@@ -88,8 +88,8 @@ class DailyResearchPipeline:
         papers = filtered_papers
 
         # ── Step 3: Cache deduplication ──────────────────────────────
-        unseen_ids = self._cache.unseen_ids([p.arxiv_id for p in papers])
-        unseen_papers = [p for p in papers if p.arxiv_id in unseen_ids]
+        unseen_ids = self._cache.unseen_ids([p.paper_id for p in papers])
+        unseen_papers = [p for p in papers if p.paper_id in unseen_ids]
 
         if not unseen_papers:
             logger.info(
@@ -116,7 +116,7 @@ class DailyResearchPipeline:
         self._display_result(result)
 
         # ── Step 7: Mark as seen ──────────────────────────────────────
-        self._cache.mark_seen(top_paper.arxiv_id)
+        self._cache.mark_seen(top_paper.paper_id)
 
         logger.info("Pipeline run complete.")
         return result

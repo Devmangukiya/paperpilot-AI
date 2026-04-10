@@ -1,5 +1,9 @@
-from .retrieval import ArxivRetriever
+from .retrieval import OpenAlexRetriever
 from .filter import PaperFilter
 from .groq_client import GroqClient
 
-__all__ = ["ArxivRetriever", "PaperFilter", "GroqClient"]
+__all__ = [
+    "OpenAlexRetriever",
+    "PaperFilter",
+    "GroqClient",
+]

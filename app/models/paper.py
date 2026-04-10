@@ -15,7 +15,7 @@ from typing import Optional
 class Paper:
     """Raw paper as returned by the retrieval module."""
 
-    arxiv_id: str
+    paper_id: str
     title: str
     authors: list[str]
     abstract: str

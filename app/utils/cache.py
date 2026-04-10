@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 
 class PaperCache:
     """
-    Manages a local JSON file that maps arxiv_id → ISO timestamp of when
+    Manages a local JSON file that maps paper_id → ISO timestamp of when
     it was first seen.
 
     The cache is automatically pruned every load so it never grows unboundedly
@@ -33,19 +33,19 @@ class PaperCache:
     #  Public API                                                          #
     # ------------------------------------------------------------------ #
 
-    def is_seen(self, arxiv_id: str) -> bool:
+    def is_seen(self, paper_id: str) -> bool:
         """Return True if this paper was already processed."""
-        return arxiv_id in self._data
+        return paper_id in self._data
 
-    def mark_seen(self, arxiv_id: str) -> None:
+    def mark_seen(self, paper_id: str) -> None:
         """Record a paper as processed and persist to disk."""
-        self._data[arxiv_id] = datetime.now(timezone.utc).isoformat()
+        self._data[paper_id] = datetime.now(timezone.utc).isoformat()
         self._save()
-        logger.debug("Cache: marked %s as seen.", arxiv_id)
+        logger.debug("Cache: marked %s as seen.", paper_id)
 
-    def unseen_ids(self, arxiv_ids: list[str]) -> list[str]:
+    def unseen_ids(self, paper_ids: list[str]) -> list[str]:
         """Filter a list of IDs, returning only those not yet seen."""
-        return [aid for aid in arxiv_ids if not self.is_seen(aid)]
+        return [aid for aid in paper_ids if not self.is_seen(aid)]
 
     # ------------------------------------------------------------------ #
     #  Internal helpers                                                    #

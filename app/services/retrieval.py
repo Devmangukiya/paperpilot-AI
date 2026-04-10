@@ -1,19 +1,17 @@
 """
 services/retrieval.py
 ---------------------
-Fetches papers from arXiv using keyword combinations.
+Fetches papers from OpenAlex (the whole internet space) using keyword combinations.
 
-Uses the `arxiv` Python library which wraps the arXiv API.
-The query is constructed as a boolean combination of the user-supplied
-keywords to maximise recall while staying relevant.
+OpenAlex API indexes over 250 million works globally, including arXiv, PubMed, 
+Crossref, and major journals without requiring an API key.
 """
 
 from __future__ import annotations
 
 import time
+import requests
 from datetime import datetime, timedelta, timezone
-
-import arxiv
 
 from app.config import config
 from app.models.paper import Paper
@@ -22,17 +20,14 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-class ArxivRetriever:
+class OpenAlexRetriever:
     """
-    Retrieves papers from arXiv for a list of keywords.
+    Retrieves papers from OpenAlex for a list of keywords.
 
-    The keywords are combined into an arXiv query string of the form:
-        (kw1 OR kw1_alias) AND (kw2 OR kw2_alias) ...
-    which is then submitted to the arXiv search API.
+    Uses progressive fallback queries to ensure a 100% retrieval rate.
     """
 
-    # arXiv rate-limit: max ~3 req/sec; we sleep between calls to be polite
-    _SLEEP_BETWEEN_CALLS: float = 1.0
+    _BASE_URL = "https://api.openalex.org/works"
 
     def __init__(
         self,
@@ -41,11 +36,6 @@ class ArxivRetriever:
     ):
         self.max_results = max_results
         self.lookback_days = lookback_days
-        self._client = arxiv.Client(
-            page_size=min(max_results, 100),
-            delay_seconds=self._SLEEP_BETWEEN_CALLS,
-            num_retries=3,
-        )
 
     # ------------------------------------------------------------------ #
     #  Public API                                                          #
@@ -74,37 +64,37 @@ class ArxivRetriever:
             ("strict_and", self._build_query_strict_and(keywords)),
             ("loose_and", self._build_query_loose_and(keywords)),
             ("raw", raw_kw_str),
-            ("broad_fallback", "cat:cs.AI OR cat:cs.LG OR cat:cs.CY")
+            ("broad_fallback", "artificial intelligence OR machine learning")
         ]
 
         papers: list[Paper] = []
         
+        # Identify politely to OpenAlex (best practice, places us in polite pool)
+        headers = {"User-Agent": "mailto:dev@paperpilot.ai"}
+
         for strategy_name, query in strategies:
-            logger.info("arXiv query (%s): %s", strategy_name, query)
-            search = arxiv.Search(
-                query=query,
-                max_results=self.max_results,
-                sort_by=arxiv.SortCriterion.SubmittedDate,
-                sort_order=arxiv.SortOrder.Descending,
-            )
+            logger.info("OpenAlex query (%s): %s", strategy_name, query)
+            
+            params = {
+                "search": query,
+                "filter": "has_abstract:true",
+                "per-page": min(self.max_results, 50),
+                "sort": "publication_date:desc"
+            }
 
             try:
-                for result in self._client.results(search):
-                    # Enforce strict date filter for earlier strategies.
-                    # For 'broad_fallback', keep the date filter. 
-                    # If broad_fallback yields 0 within date, we'll strip date limits inside a final loop check.
-                    paper = Paper(
-                        arxiv_id=result.entry_id.split("/")[-1],
-                        title=result.title,
-                        authors=[str(a) for a in result.authors],
-                        abstract=result.summary.replace("\n", " "),
-                        published=result.published,
-                        url=result.entry_id,
-                        categories=result.categories,
-                    )
-                    papers.append(paper)
+                response = requests.get(self._BASE_URL, params=params, headers=headers, timeout=15)
+                response.raise_for_status()
+                data = response.json()
+                results = data.get("results", [])
+
+                for item in results:
+                    paper = self._parse_paper(item)
+                    if paper:
+                        papers.append(paper)
+                        
             except Exception as exc:  # noqa: BLE001
-                logger.error("arXiv fetch error: %s", exc)
+                logger.error("OpenAlex fetch error: %s", exc)
 
             # Date filtering - only for early strategies to guarantee papers at the end!
             filtered_papers = [
@@ -113,35 +103,91 @@ class ArxivRetriever:
             ]
 
             if filtered_papers:
-                logger.info("Retrieved %d papers from arXiv using strategy '%s'.", len(filtered_papers), strategy_name)
+                logger.info("Retrieved %d papers from OpenAlex using strategy '%s'.", len(filtered_papers), strategy_name)
                 return filtered_papers
             elif papers and strategy_name == "broad_fallback":
                 # We found papers but they are older than the lookback window.
                 # To guarantee 100% retrieval, ignore the date filter.
                 logger.warning("No recent papers found. Returning older papers from fallback to guarantee retrieval.")
                 return papers
+            
+            # Short sleep between strategies
+            time.sleep(0.5)
 
-        logger.warning("No papers retrieved from arXiv at all.")
+        logger.warning("No papers retrieved from OpenAlex at all.")
         return []
 
     # ------------------------------------------------------------------ #
     #  Internal helpers                                                    #
     # ------------------------------------------------------------------ #
 
+    def _parse_paper(self, item: dict) -> Paper | None:
+        """Parse raw OpenAlex dict into a Paper model."""
+        try:
+            openalex_id = item.get("id", "").split("/")[-1]
+            title = item.get("title", "")
+            
+            # Extract authors
+            authorships = item.get("authorships", [])
+            authors = [a.get("author", {}).get("display_name", "Unknown") for a in authorships]
+            
+            # Reconstruct abstract
+            abstract = ""
+            abstract_idx = item.get("abstract_inverted_index")
+            if abstract_idx:
+                 max_pos = max(max(positions) for positions in abstract_idx.values())
+                 words = [""] * (max_pos + 1)
+                 for word, positions in abstract_idx.items():
+                     for pos in positions:
+                         words[pos] = word
+                 abstract = " ".join(words)
+            
+            if not abstract or not title:
+                return None
+                
+            # Date
+            pub_date_str = item.get("publication_date")
+            published = None
+            if pub_date_str:
+                 try:
+                     # OpenAlex format YYYY-MM-DD
+                     published = datetime.strptime(pub_date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                 except ValueError:
+                     pass
+                     
+            # URL
+            url = item.get("doi") or (item.get("primary_location") or {}).get("landing_page_url") or item.get("id")
+            
+            # Topics / Categories
+            topics = [t.get("display_name") for t in item.get("topics", [])]
+
+            return Paper(
+                paper_id=openalex_id,
+                title=title,
+                authors=authors,
+                abstract=abstract,
+                published=published or datetime.now(timezone.utc),
+                url=url,
+                categories=topics,
+            )
+        except Exception as exc:
+            logger.debug("Failed to parse paper: %s", exc)
+            return None
+
     @staticmethod
     def _build_query_strict_and(keywords: list[str]) -> str:
-        """ti_abs:"kw1" AND ti_abs:"kw2" """
+        """kw1 AND kw2 (OpenAlex search uses default boolean operators)"""
         parts = []
         for kw in keywords:
             escaped = kw.strip().replace('"', "")
-            parts.append(f'ti_abs:"{escaped}"')
+            parts.append(f'"{escaped}"')
         return " AND ".join(parts)
 
     @staticmethod
     def _build_query_loose_and(keywords: list[str]) -> str:
-        """all:"kw1" AND all:"kw2" """
+        """kw1 AND kw2 (without quotes)"""
         parts = []
         for kw in keywords:
             escaped = kw.strip().replace('"', "")
-            parts.append(f'all:"{escaped}"')
+            parts.append(f'{escaped}')
         return " AND ".join(parts)

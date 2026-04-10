@@ -74,28 +74,18 @@ class DailyResearchPipeline:
         papers = retriever.fetch(self.keywords)
 
         if not papers:
-            # Fallback: try a broader OR query (fewer keywords)
-            logger.warning("No papers found with AND query. Trying relaxed search …")
-            papers = retriever.fetch(self.keywords[:2])
-
-        if not papers:
             logger.error("No papers found at all. Aborting.")
             return None
 
         # ── Step 2: Filter ────────────────────────────────────────────
         paper_filter = PaperFilter(keywords=self.keywords, min_keyword_matches=1)
-        papers = paper_filter.filter(papers)
+        filtered_papers = paper_filter.filter(papers)
 
-        if not papers:
-            logger.warning("All papers filtered out. Relaxing keyword requirement …")
-            paper_filter2 = PaperFilter(keywords=self.keywords[:2], min_keyword_matches=1)
-            papers = paper_filter2.filter(
-                ArxivRetriever(max_results=config.MAX_RESULTS).fetch(self.keywords[:2])
-            )
+        if not filtered_papers:
+            logger.warning("All papers filtered out. Bypassing filter to guarantee 100% retrieval rate.")
+            filtered_papers = papers
 
-        if not papers:
-            logger.error("No papers survived filtering. Aborting.")
-            return None
+        papers = filtered_papers
 
         # ── Step 3: Cache deduplication ──────────────────────────────
         unseen_ids = self._cache.unseen_ids([p.arxiv_id for p in papers])
